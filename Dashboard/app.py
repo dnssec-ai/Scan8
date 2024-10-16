@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, Response
+from flask import Flask, render_template, request, redirect, url_for, Response, jsonify
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import os
@@ -16,18 +16,19 @@ from threading import Thread
 load_dotenv()
 
 app = Flask(__name__)
-upload_path = os.getenv("UPLOAD_DIRECTORY")
-result_path = os.getenv("RESULTS_PATH")
-CORS(app,resources={r"/*":{"origins":"*"}})
-socketio = SocketIO(app, message_queue=os.environ.get('REDIS_URL'),cors_allowed_origins='*')
+upload_path = os.getenv("UPLOAD_DIRECTORY", "uploads")
+result_path = os.getenv("RESULTS_PATH", "results")
+CORS(app, resources={r"/*": {"origins": "*"}})
+socketio = SocketIO(app, message_queue=os.environ.get('REDIS_URL'), cors_allowed_origins='*')
 
-
+# Configure upload folder
 app.config['UPLOAD_FOLDER'] = upload_path
 app.config['UPLOAD_FOLDER'] = os.getenv("UPLOAD_DIRECTORY")
 
-mongodbHost = os.getenv("MONGODB_HOST")
-mongodbPort = int(os.getenv("MONGODB_PORT"))
+mongodbHost = os.getenv("MONGODB_HOST", "localhost")
+mongodbPort = int(os.getenv("MONGODB_PORT", 27017))
 
+# MongoDB client and database setup
 client = MongoClient(mongodbHost, mongodbPort)
 scan8 = client['scan8']
 links = scan8['links']
@@ -37,28 +38,26 @@ queuedScans = scan8['queuedScans']
 runningScans = scan8['runningScans']
 completedScans = scan8['completedScans']
 
-#create common/Results and Uploods if not there
+# Ensure upload and result directories exist
 if not os.path.exists(upload_path):
     os.makedirs(upload_path)
 if not os.path.exists(result_path):
     os.makedirs(result_path)
 
-redis_client = Redis(host=os.getenv('REDIS_HOST'),port=int(os.getenv("REDIS_PORT")))
+redis_client = Redis(host=os.getenv('REDIS_HOST', '127.0.0.1'), port=int(os.getenv("REDIS_PORT", 6379)))
 redis_pubsub = redis_client.pubsub()
 redis_pubsub.subscribe('scan_progress')
 
-#get scans on socket connection
+# Get scans on socket connection
 def get_scans():
     _queued = list(queuedScans.find())
     _running = list(runningScans.find())
     _completed = list(completedScans.find())
 
-    socketio.emit("update", {'queued':_queued, 'running':_running, 'completed':_completed})
-
+    socketio.emit("update", {'queued': _queued, 'running': _running, 'completed': _completed})
 
 # Socket implementation
 def background_thread():
-
     def parse_message(message):
         json_str = message.decode('utf-8')
         return json.loads(json_str)
@@ -66,7 +65,7 @@ def background_thread():
     for message in redis_pubsub.listen():
         if message['type'] == 'message':
             json_data = parse_message(message['data'])
-            socketio.emit('update', json_data )
+            socketio.emit('update', json_data)
 
 @socketio.on('connect')
 def connect():
@@ -91,18 +90,20 @@ def upload_files():
         dirPath = os.path.join(app.config['UPLOAD_FOLDER'], str(id))
         os.mkdir(dirPath)
 
+        # Save all files including .html, .css, .js, .txt
         for file in uploadedFiles:
             if file:
                 filename = secure_filename(file.filename)
-                file.save(os.path.join(dirPath, filename ))
+                file.save(os.path.join(dirPath, filename))
 
+        # Record file upload details
         curTime = datetime.now()
         dirSize = 0
         numFiles = 0
         for element in os.scandir(dirPath):
-            dirSize+=os.path.getsize(element)
+            dirSize += os.path.getsize(element)
             numFiles += 1
-            
+
         scan8.prequeuedScans.insert_one(
             {"_id": str(id), "submitTime": {"date": curTime.strftime("%d-%m-%Y"), "time": curTime.strftime(
                 "%H:%M:%S")}, "size": size(dirSize, system=si), "files": {"total": numFiles, "completed": 0}, "result": {"Virus": 0, "Virus_name": []}}
@@ -112,16 +113,16 @@ def upload_files():
 
 def link():
     if request.method == 'POST':
-    	try:
-    		id = shortuuid.uuid()
-    		link = request.form.get('link')
-    		proxy = request.form.get('proxy')
-    		if not validators.url(link):
-    			raise InvalidURLException("Invalid URL")
-    		scan8.links.insert_one({"_id": str(id), "link": link, "proxy": proxy})
-    		return "ok"
-    	except:
-    		return "error"
+        try:
+            id = shortuuid.uuid()
+            link = request.form.get('link')
+            proxy = request.form.get('proxy')
+            if not validators.url(link):
+                raise InvalidURLException("Invalid URL")
+            scan8.links.insert_one({"_id": str(id), "link": link, "proxy": proxy})
+            return "ok"
+        except:
+            return "error"
 
 def progress():
     def generate():
@@ -136,16 +137,12 @@ def progress():
 
     return Response(generate(), mimetype='text/event-stream')
 
-
+# URL Routes
 app.add_url_rule("/", endpoint="dashboard", view_func=index, methods=['GET'])
-app.add_url_rule("/progress", endpoint="progress",
-                 view_func=progress, methods=['GET'])
-app.add_url_rule("/upload", endpoint="upload",
-                 view_func=upload_files, methods=['GET', 'POST'])
-app.add_url_rule("/link", endpoint="link",
-                 view_func=link, methods=['GET', 'POST'])
+app.add_url_rule("/progress", endpoint="progress", view_func=progress, methods=['GET'])
+app.add_url_rule("/upload", endpoint="upload", view_func=upload_files, methods=['GET', 'POST'])
+app.add_url_rule("/link", endpoint="link", view_func=link, methods=['GET', 'POST'])
 
 if __name__ == "__main__":
     app.debug = True
     socketio.run(app, log_output=True)
-   

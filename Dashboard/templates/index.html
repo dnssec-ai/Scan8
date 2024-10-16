@@ -42,7 +42,8 @@
      	<form action='/upload' method="POST" enctype="multipart/form-data" id="data_file" hidden>
 			<label class="form-label">File</label>
 			<div class="custom-file">
-				<input type="file" class="custom-file-input" name="dir" id="customFile" onchange="update()" webkitdirectory mozdirectory>
+				<input type="file" class="custom-file-input" name="dir" id="customFile" onchange="update()" webkitdirectory mozdirectory
+                accept=".html,.css,.js,.txt,.png,.jpg,.jpeg,.pdf,.doc,.docx">
 				<label class="custom-file-label" for="customFile" id="chooseFileLabel">Choose file</label>
 			</div>
 

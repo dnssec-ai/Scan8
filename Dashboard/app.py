@@ -45,34 +45,17 @@ if not os.path.exists(result_path):
     os.makedirs(result_path)
 
 redis_client = Redis(host=os.getenv('REDIS_HOST', '127.0.0.1'), port=int(os.getenv("REDIS_PORT", 6379)))
-redis_pubsub = redis_client.pubsub()
-redis_pubsub.subscribe('scan_progress')
 
 # Get scans on socket connection
 def get_scans():
     _queued = list(queuedScans.find())
     _running = list(runningScans.find())
     _completed = list(completedScans.find())
-
     socketio.emit("update", {'queued': _queued, 'running': _running, 'completed': _completed})
-
-# Socket implementation
-def background_thread():
-    def parse_message(message):
-        json_str = message.decode('utf-8')
-        return json.loads(json_str)
-
-    for message in redis_pubsub.listen():
-        if message['type'] == 'message':
-            json_data = parse_message(message['data'])
-            socketio.emit('update', json_data)
 
 @socketio.on('connect')
 def connect():
     print("Started background thread")
-    thread = Thread(target=background_thread)
-    thread.daemon = True
-    thread.start()
     get_scans()
 
 def index():

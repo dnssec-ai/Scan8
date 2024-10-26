@@ -16,7 +16,7 @@ from threading import Thread
 load_dotenv()
 
 app = Flask(__name__)
-upload_path = os.getenv("UPLOAD_DIRECTORY", "uploads")
+upload_path = os.getenv("UPLOAD_DIRECTORY", '../common/Uploads')
 result_path = os.getenv("RESULTS_PATH", "results")
 CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, message_queue=os.environ.get('REDIS_URL'), cors_allowed_origins='*')
@@ -41,8 +41,10 @@ completedScans = scan8['completedScans']
 # Ensure upload and result directories exist
 if not os.path.exists(upload_path):
     os.makedirs(upload_path)
+    print(f"Created missing directory: {upload_path}")
 if not os.path.exists(result_path):
     os.makedirs(result_path)
+    print(f"Created missing directory: {result_path}")
 
 redis_client = Redis(host=os.getenv('REDIS_HOST', '127.0.0.1'), port=int(os.getenv("REDIS_PORT", 6379)))
 

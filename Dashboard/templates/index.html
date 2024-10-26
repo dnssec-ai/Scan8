@@ -39,17 +39,21 @@
 			</div>
      	</form>
      	
-     	<form action='/upload' method="POST" enctype="multipart/form-data" id="data_file" hidden>
-			<label class="form-label">File</label>
-			<div class="custom-file">
-				<input type="file" class="custom-file-input" name="dir" id="customFile" onchange="update()" webkitdirectory mozdirectory>
-				<label class="custom-file-label" for="customFile" id="chooseFileLabel">Choose file</label>
-			</div>
-
-			<div class="py-3 d-flex justify-content-end">
-				<button type="submit" value='Upload' id="upload" class="btn btn-primary">Submit</button>
-			</div>
-     	</form>
+     	<form action='/upload' method="POST" enctype="multipart/form-data" id="data_file">
+            <label class="form-label">Upload Files</label>
+            <div class="custom-file">
+                <input type="file" class="custom-file-input" name="dir" id="customFile" onchange="update()" webkitdirectory>
+                <label class="custom-file-label" for="customFile">Choose folder</label>
+            </div>
+            <div class="custom-file">
+                <input type="file" class="custom-file-input" name="file" id="customFileSingle" onchange="updateSingleFile()">
+                <label class="custom-file-label" for="customFileSingle">Choose file</label>
+            </div>
+            <div class="py-3 d-flex justify-content-end">
+                <button type="submit" value='Upload' class="btn btn-primary">Submit</button>
+            </div>
+        </form>
+        
 	</div>
 	<div class="py-2"></div>
 	<div class="border-primary rounded p-4" style="border-style: solid;border-width: 4px;">

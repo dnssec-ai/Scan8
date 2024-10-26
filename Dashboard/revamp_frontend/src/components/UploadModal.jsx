@@ -20,7 +20,9 @@ const UploadModal = ({ modal, setModal }) => {
             }
         } else {
             const selectedFile = fileInputRef.current.files[0];
-            formData.append("dir", selectedFile);
+            if (selectedFile) {
+                formData.append("dir", selectedFile);
+            }
         }
         const requestOptions = {
             method: "POST",
@@ -48,6 +50,15 @@ const UploadModal = ({ modal, setModal }) => {
             setMsg(`${numFiles} file(s) selected`);
         } else {
             setUpload(true);
+            setMsg(""); // Clear message if no files are selected
+        }
+    }
+
+    function updateSingleFile() {
+        if (fileInputRef.current.files.length > 0) {
+            setMsg(`${fileInputRef.current.files.length} file(s) selected`);
+        } else {
+            setMsg(""); // Clear message if no files are selected
         }
     }
 
@@ -66,7 +77,6 @@ const UploadModal = ({ modal, setModal }) => {
                     <input
                         type="file"
                         webkitdirectory=""
-                        mozdirectory=""
                         ref={folderInputRef}
                         onChange={update}
                         style={{ display: "none" }}
@@ -84,7 +94,10 @@ const UploadModal = ({ modal, setModal }) => {
                         type="file"
                         accept=".html,.css,.js,.txt" // Specify accepted file types
                         ref={fileInputRef}
-                        onChange={update}
+                        onChange={() => {
+                            updateSingleFile();
+                            update(); // Call update to update the message
+                        }}
                         style={{ display: "none" }}
                     />
                     <label className="custom-upload" onClick={() => {
